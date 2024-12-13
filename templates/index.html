@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FPL Players</title> 
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+    <h1>FPL Insights</h1>
+
+    <!--- add info for gameweek stuff here!  --> 
+    <div id="gameweekInfo" style = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2> Current Gameweek: <span id = "gameweekGameweek"> Loading... </span> ------------- Deadline: <span id = "gameweekDeadlineDate"> Loading... </span> 
+    
+            <span id = "gameweekDeadlineTime">  </span>
+        </h2>
+    
+    </div>
+
+    <h2>Top 5 players</h2>  
+    <table id="topplayersTable">
+        <thead> 
+            <tr>
+                <th>First Name</th>
+                <th>Second Name</th>
+                <th>Team</th>
+                <th>Cost(million)</th>
+                <th>Total Points</th>
+                <th>Position</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Data will be inserted here -->
+        </tbody>
+    </table>
+
+    <h2>Player past performance</h2>
+    <h3>Select a Player</h3>
+    <select id="playerDropDown">
+        <option value = ""> Select player </option>
+    </select>
+
+    <h3>Performance last 5 games</h3>
+
+
+    <script>
+        async function get_top_players() {
+            // get data from the endpoint via flask api (insert endpoint url )
+            console.log('ian');
+            const response = await fetch('http://127.0.0.1:5000/topplayers');
+            const players = await response.json(); // save json into players object 
+            
+            // get the table body element (table name + table body i.e. which part of table to inset )
+            const tableBody = document.querySelector('#topplayersTable tbody');
+
+            players.forEach(player => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${player.first_name}</td>
+                    <td>${player.second_name}</td>
+                    <td>${player.team}</td>
+                    <td>${(player.now_cost/10).toFixed(1)}</td>
+                    <td>${player.total_points}</td>
+                    <td>${player.position}</td>
+                `;
+                tableBody.appendChild(row);
+            }); }
+        
+        async function get_gameweek() {
+            console.log('ian3');
+            const response = await fetch('http://127.0.0.1:5000/gameweek')
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const [gameweekInfo] = await response.json(); 
+            
+            const gameweek = gameweekInfo.gameweek.replace('Gameweek ', '');
+
+            // Combine deadline_date and deadline_time into a Date object
+            const deadline = new Date(`${gameweekInfo.deadline_date}T${gameweekInfo.deadline_time}`);
+
+            // Format the date as dd-(%b)
+            const formattedDate = deadline.toLocaleDateString('en-US', {
+                day: '2-digit',
+                month: 'short'
+            });
+
+            // Format the time as hh:mm (no seconds)
+            const formattedTime = deadline.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+
+            // Update the DOM with the formatted values
+            document.getElementById('gameweekGameweek').textContent = gameweek;
+            document.getElementById('gameweekDeadlineDate').textContent = formattedDate;
+            document.getElementById('gameweekDeadlineTime').textContent = formattedTime;
+            }
+        
+        async function populatePlayerDropdown() {
+            console.log('ian2');
+            const response = await fetch('http://127.0.0.1:5000/players');
+            console.log(response);
+            console.log('hi');
+            const players = await response.json();
+            const dropdown = document.getElementById('playerDropDown'); //find the dropdown option -- we will be adding options 
+            console.log('Dropdown: ' + dropdown);
+
+            //clear existing option
+            dropdown.innerHTML = "<option value = ''> Select player </option>";
+
+            //ADD OPTIONS FOR PLAYERS
+            players.forEach(player => {
+                const option = document.createElement('option'); 
+                option.value = player.player_id; //set value to pid
+                option.textContent = player.name;
+                dropdown.appendChild(option);
+            });
+            
+        }
+
+        // Fetch players when the page loads
+        window.onload = async() => {
+            await get_top_players();
+            await get_gameweek();
+            await populatePlayerDropdown();
+        };
+    </script>
+</body>
+</html>

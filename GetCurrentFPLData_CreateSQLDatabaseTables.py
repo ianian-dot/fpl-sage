@@ -59,6 +59,9 @@ players_with_teams_positions.drop(columns=['id_y'], inplace=True)
 players_with_teams_positions.rename(columns={'id_x':'player_id'}, inplace=True)
 players_with_teams_positions.rename(columns={'plural_name_short':'position'}, inplace=True)
 
+## SAVE THIS NEW STATIC PLAYERS TABLE -- WITH TEAMS AND POSITIONS DATA
+players_with_teams_positions.to_csv('./CurrentSeasonData/Players_with_teams_positions.csv')
+
 ########################################################################################
 ## MERGE CURRENT AND PAST DATA! 
 

@@ -88,6 +88,10 @@ def get_player_history(pid):
 # ## Save csv
 # full_history_df.to_csv('CurrentSeasonData/PlayerHistories.csv')
 
+## Read full history 
+full_history_df = pd.read_csv('CurrentSeasonData/PlayerHistories.csv')
+
+
 ## Merge in histories to player data 
 merged_df = pd.merge(players_with_teams_positions, full_history_df, how='inner', 
                      left_on='player_id', 
@@ -116,6 +120,26 @@ from sqlite3 import connect
 ## Create the db and connect to it 
 conn = connect('fpl_data.db')
 curr = conn.cursor()
+
+## CREATE STATIC TEAMS TABLE
+curr.execute(
+    '''
+    CREATE TABLE IF NOT EXISTS StaticTeams(
+    id INTEGERY PRIMARY KEY, 
+    short_name VARCHAR(3),
+    strength INTEGER, 
+    strength_overall_home INTEGER, 
+    strength_overall_away INTEGER, 
+    strength_attack_home INTEGER, 
+    strength_defence_home INTEGER, 
+    strength_defence_away INTEGER, 
+    strength_attack_away INTEGER
+    )
+'''
+)
+
+## Populate table
+teams[['id', 'short_name']+ str_cols].to_sql('StaticTeams', conn, index=False, if_exists='append')
 
 ## CREATE STATIC PLAYERS TABLE ------------------------------------------
 players_table_cols = ['player_id', 'now_cost', 'points_per_game', 'first_name', 'second_name', 'team', 'total_points', 
@@ -250,4 +274,4 @@ fixtures[fixtures_col].to_sql(name='Fixtures', con=conn, if_exists='append', ind
 ## TESTING -- DELETE LATER
 pd.read_sql('SELECT name as gameweek, deadline_date, deadline_time from fixtures where average_entry_score == 0 ORDER BY deadline_date LIMIT 1', conn)
 query = 'SELECT first_name, second_name, team, now_cost, total_points, position FROM StaticPlayers ORDER BY total_points DESC LIMIT 5'
-pd.read_sql(query, conn)
+

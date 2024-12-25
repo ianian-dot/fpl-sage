@@ -15,11 +15,11 @@ def get_db_connection():
 def get_top_players():
     conn = get_db_connection()
     query = '''SELECT sp.first_name || ' ' || sp.second_name as name, 
-        st.short_name as team, 
+        st.team_name as team, 
         sp.now_cost, sp.total_points, 
         sp.position
     FROM StaticPlayers sp 
-    JOIN StaticTeams st ON sp.team = st.id
+    JOIN StaticTeams st ON sp.team = st.team_id
     ORDER BY total_points DESC 
     LIMIT 5'''
     df = pd.read_sql(query, conn)
@@ -33,21 +33,25 @@ def get_top_players_position_form():
     query = '''
     SELECT sp.position, 
             sp.first_name || ' ' || sp.second_name as name,
-            st.short_name as team, 
+            st.team_name as team, 
             ROUND(AVG(ph.total_points), 1) as past_3_games_avg, --take the avg of the entire col
-            now_cost/10 as cost_mil,
-            ROUND(sp.total_points/(sp.now_cost/10),1) as points_per_mil,
-            ict_index
+            ROUND(AVG(ph.ict_index), 1) as past_3_ICT_avg, --take the avg of the entire col
+            ROUND(((sp.now_cost)/AVG(ph.total_points)), 1) as recent_value,
+            sp.now_cost/10 as cost_mil,
+            sp.total_points as total_points,
+            ROUND(ph.total_points/(sp.now_cost/10),3) as value
     FROM PlayerHistories ph
     LEFT JOIN StaticPlayers sp ON ph.element = sp.player_id
-    LEFT JOIN StaticTeams st ON sp.team = st.id
+    LEFT JOIN StaticTeams st ON sp.team = st.team_id
     WHERE ph.round >= (SELECT MAX(round) - 2 FROM PlayerHistories)
     GROUP BY sp.player_id --need this line since we are aggregating ph.totalpoints
     '''
 
     df = pd.read_sql(query, conn)
-    df = df.sort_values(['position', 'past_3_games_avg'], ascending=False).groupby('position').head(3)
     conn.close()
+    df = df.sort_values(['position', 'past_3_games_avg'], ascending=[False, False]).groupby('position').head(3)
+    df.position = pd.Categorical(df.position, categories= ['FWD', 'MID', 'DEF', 'GKP'], ordered=True)
+    df = df.sort_values(['position', 'past_3_games_avg'])
     return df.to_json(orient='records')
 
     
@@ -93,6 +97,7 @@ def get_player_hist(player_id):
     LIMIT 5
     '''
     df = pd.read_sql(query, conn, params=(player_id,))
+    df = df.sort_values('round', ascending= True)
     conn.close()
     return df.to_json(orient='records')
     

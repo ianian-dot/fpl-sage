@@ -78,15 +78,15 @@ def get_player_history(pid):
     return(player_hist_df)
 
 ## Load each player history -- takes a while, can reduce sleep time if needs to be faster
-# from tqdm.auto import tqdm
-# tqdm.pandas()
-# players_histories = players.id.progress_apply(get_player_history)
+from tqdm.auto import tqdm
+tqdm.pandas()
+players_histories = players.id.progress_apply(get_player_history)
 
 ## Check
-# full_history_df = pd.concat(history for history in players_histories) ## use list comprehension
+full_history_df = pd.concat(history for history in players_histories) ## use list comprehension
 
 # ## Save csv
-# full_history_df.to_csv('CurrentSeasonData/PlayerHistories.csv')
+full_history_df.to_csv('CurrentSeasonData/PlayerHistories.csv')
 
 ## Read full history 
 full_history_df = pd.read_csv('CurrentSeasonData/PlayerHistories.csv')
@@ -125,7 +125,7 @@ curr = conn.cursor()
 curr.execute(
     '''
     CREATE TABLE IF NOT EXISTS StaticTeams(
-    id INTEGERY PRIMARY KEY, 
+    team_id INTEGERY PRIMARY KEY, 
     short_name VARCHAR(3),
     strength INTEGER, 
     strength_overall_home INTEGER, 
@@ -139,7 +139,7 @@ curr.execute(
 )
 
 ## Populate table
-teams[['id', 'short_name']+ str_cols].to_sql('StaticTeams', conn, index=False, if_exists='append')
+teams[['team_id', 'short_name']+ str_cols].to_sql('StaticTeams', conn, index=False, if_exists='append')
 
 ## CREATE STATIC PLAYERS TABLE ------------------------------------------
 players_table_cols = ['player_id', 'now_cost', 'points_per_game', 'first_name', 'second_name', 'team', 'total_points', 
@@ -275,3 +275,17 @@ fixtures[fixtures_col].to_sql(name='Fixtures', con=conn, if_exists='append', ind
 pd.read_sql('SELECT name as gameweek, deadline_date, deadline_time from fixtures where average_entry_score == 0 ORDER BY deadline_date LIMIT 1', conn)
 query = 'SELECT first_name, second_name, team, now_cost, total_points, position FROM StaticPlayers ORDER BY total_points DESC LIMIT 5'
 
+
+## testing stuff -- delete later
+conn.row_factory = lambda cursor, row: {cursor.description[idx][0]: value for idx, value in enumerate(row)} ## set rows to be dictionaries for easier indexingb 
+cursor = conn.cursor()
+cursor.execute('select max(round) from PlayerHistories')
+round = cursor.fetchone()
+round['max(round)']
+
+cursor.execute('select player_id from StaticPlayers')
+player_ids = cursor.fetchall()
+player_ids = [row['player_id'] for row in player_ids]
+
+cursor.execute('select player_id from StaticPlayers where second_name like "Salah"')
+cursor.fetchall()

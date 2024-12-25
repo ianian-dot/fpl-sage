@@ -17,6 +17,22 @@
         th {
             background-color: #f4f4f4;
         }
+        /* position specific colors */
+        .goalkeeper {
+        background-color: #D3D3D3; /* Gold */
+        }
+        .defender {
+            background-color: #FFFFFF; /* Light Green */
+        }
+        .midfielder {
+            background-color: #D3D3D3	; /* Light Blue */
+        }
+        .forward {
+            background-color: #FFFFFF; /* Tomato Red */
+        }
+
+
+
     </style>
     <!-- LOAD THE CHART.JS HERE-->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -62,7 +78,10 @@
                 <th>Position</th>
                 <th>Team</th>
                 <th>Average Points past 3 games</th>
-                <th>ICT index</th>
+                <th>Average ICT index past 3 games</th>
+                <th>Recent Value</th>
+                <th>Cost</th>
+                <th>Total Points</th>
                 <th>Value (points per million)</th>
             </tr>
         </thead>
@@ -79,11 +98,24 @@
     <select id="playerDropDown">
         <option value = ""> Select player </option>
     </select>
+    
+    <h3>Select another player</h3>
+    <select id="playerDropDown2">
+        <option value = ""> Select player </option>
+    </select>
+    
 
     <h3>Performance last 5 games</h3>
-    <canvas id="playerChart" width = '400' height = '200'>
-    </canvas>
 
+    <div style = 'display: flex; justify-content: center; gap:20px;'>
+        <div style = 'width: 800px; height: 600px;'>
+            <canvas id="playerChart" width = '1000' height = '1000'></canvas>
+        </div>
+        <div style = 'width: 800px; height: 600px;'>
+            <canvas id="playerChart2" width = '1000' height = '1000'></canvas>                
+        </div>
+    </div>
+            
 
     <script>
 
@@ -109,24 +141,48 @@
                 }); }
                 
                 /////////////////////////////////////////////////////////////////////////////////// 
-                async function get_players_recent_form() {
-                    console.log('begin function for players recent form')
-                    const response = await fetch('http://127.0.0.1:5000/topplayers/position');
-                    const players = await response.json();
-                    
-                    const tableBody = document.querySelector('#topPlayersRecentFormTable tbody');
-                    
-                    players.forEach(player => {
-                        const row = document.createElement('tr')
-                        row.innerHTML = `
-                        <td>${player.name}</td>
-                        <td>${player.position}</td>
-                        <td>${player.team}</td>
-                        <td>${(player.cost_mil)}</td>
-                        <td>${(player.points_per_mil)}</td>
-                        <td>${player.ict_index}</td>
-                        `;
-                        tableBody.appendChild(row);
+        async function get_players_recent_form() {
+            console.log('begin function for players recent form')
+            const response = await fetch('http://127.0.0.1:5000/topplayers/position');
+            const players = await response.json();
+            
+            const tableBody = document.querySelector('#topPlayersRecentFormTable tbody');
+            
+            players.forEach(player => {
+                const row = document.createElement('tr')
+                console.log('position '+player.position)
+                        // Add CSS class based on position
+                let positionClass = '';
+                switch (player.position.trim()) {
+                    case 'GKP':
+                        positionClass = 'goalkeeper';
+                        break;
+                    case 'DEF':
+                        positionClass = 'defender';
+                        break;
+                    case 'MID':
+                        positionClass = 'midfielder';
+                        break;
+                    case 'FWD':
+                        positionClass = 'forward';
+                        break;
+                }
+                console.log('position class' + positionClass)
+
+                row.classList.add(positionClass);
+
+                row.innerHTML = `
+                <td>${player.name}</td>
+                <td>${player.position}</td>
+                <td>${player.team}</td>
+                <td>${player.past_3_games_avg}</td>
+                <td>${player.past_3_ICT_avg}</td>
+                <td>${player.recent_value}</td>
+                <td>${(player.cost_mil)}</td>
+                <td>${(player.total_points)}</td>
+                <td>${(player.value)}</td>
+                `;
+                tableBody.appendChild(row);
             });}
         ///////////////////////////////////////////////////////////////////////////////////
     
@@ -165,100 +221,124 @@
             const response = await fetch('http://127.0.0.1:5000/players');
             const players = await response.json();
             const dropdown = document.getElementById('playerDropDown'); //find the dropdown option -- we will be adding options 
+            const dropdown2 = document.getElementById('playerDropDown2'); // for the second dropdown element
             console.log('populatePlayerDropdown' + dropdown)
 
             //clear existing option
             dropdown.innerHTML = "<option value = ''> Select player </option>";
+            dropdown2.innerHTML = "<option value = ''> Select player </option>";
 
             //ADD OPTIONS FOR PLAYERS
             players.forEach(player => {
                 const option = document.createElement('option'); 
+                const option2 = document.createElement('option'); 
                 option.value = player.player_id; //set value to pid --> this will help to send info back to backend for more processing
                 option.textContent = player.name;
                 dropdown.appendChild(option);
+                option2.value = player.player_id; //set value to pid --> this will help to send info back to backend for more processing
+                option2.textContent = player.name;
+                dropdown.appendChild(option);
+                dropdown2.appendChild(option2);
             });
             
         }
         
-        let chart;
+        let chart1 = null;
+        let chart2 = null;
         console.log('Chart.js loaded:', typeof Chart !== 'undefined');
-        async function plotPlayerPerformance(playerId) {
-        const response = await fetch(`http://127.0.0.1:5000/player/${playerId}/history`);
-        const playerHistory = await response.json();
-        
+        async function plotPlayerPerformance(playerId, chartid, chartvariable) {
+            const response = await fetch(`http://127.0.0.1:5000/player/${playerId}/history`);
+            const playerHistory = await response.json();
+            
 
-        // Save variables 
-        const rounds = playerHistory.map(game => `GW${game.round}`);
-        const actualPoints = playerHistory.map(game => game.total_points);
-        const bonus = playerHistory.map(game => game.bonus);
+            // Save variables 
+            const rounds = playerHistory.map(game => `GW${game.round}`);
+            const actualPoints = playerHistory.map(game => game.total_points);
+            const bonus = playerHistory.map(game => game.bonus);
 
-        if (chart) { //clear chart if it exists
-            chart.destroy();
-        }
-        
-        const ctx = document.getElementById('playerChart').getContext('2d');
-        chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: rounds,
-                datasets: [
-                    {
-                        label: 'Actual Points',
-                        data: actualPoints,
-                        borderColor: 'blue',
-                        backgroundColor: 'rgba(0,0,255,0.1)',
-                        fill: true,
-                        tension: 0.3,
+            if (chartvariable) { //clear chart if it exists, if not will create chartvariable below
+                console.log(`destroying existing chart ${chartid}`);
+                chartvariable.destroy();
+            }
+            
+            const ctx = document.getElementById(chartid).getContext('2d');
+            newchart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: rounds,
+                    datasets: [
+                        {
+                            label: 'Actual Points',
+                            data: actualPoints,
+                            borderColor: 'blue',
+                            backgroundColor: 'rgba(0,0,255,0.1)',
+                            fill: true,
+                            tension: 0.3,
+                        },
+                        {
+                            label: 'Bonus Points',
+                            data: bonus,
+                            borderColor: 'red',
+                            backgroundColor: 'rgba(0,255,0,0.1)',
+                            fill: true,
+                            tension: 0.3,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const datasetLabel = context.dataset.label;
+                                    const value = context.raw;
+                                    return `${datasetLabel}: ${value > 0 ? '+' : ''}${value}`;
+                                },
+                            },
+                        },
+                        legend: {
+                            position: 'top',
+                        },
                     },
-                    {
-                        label: 'Bonus Points',
-                        data: bonus,
-                        borderColor: 'red',
-                        backgroundColor: 'rgba(0,255,0,0.1)',
-                        fill: true,
-                        tension: 0.3,
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function (context) {
-                                const datasetLabel = context.dataset.label;
-                                const value = context.raw;
-                                return `${datasetLabel}: ${value > 0 ? '+' : ''}${value}`;
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Gameweek',
+                            },
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Points',
                             },
                         },
                     },
-                    legend: {
-                        position: 'top',
-                    },
                 },
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Gameweek',
-                        },
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Points',
-                        },
-                    },
-                },
-            },
-        });
+            });
+            chart.resize({
+            width: 400, // Target width
+            height: 200, // Target height
+            });
+        
+        return newchart;
     }
               
         // ADD EVENT LISTENER -- FOR THE BACKEND TO KNOW WHICH PLAYER THE USER HAS CHOSEN FROM DROPDOWN
         document.getElementById('playerDropDown').addEventListener('change', async (event) => {
         const playerId = event.target.value; // when the event occurs, then save playerId of player selected
         if (playerId) {
-            await plotPlayerPerformance(playerId); //then run the plot function! (js function))
+            chart1 = await plotPlayerPerformance(playerId, 'playerChart', chart1); //then run the plot function! (js function))
+        }
+        });
+
+        // Second event listener for plot
+        document.getElementById('playerDropDown2').addEventListener('change', async (event) => {
+        const playerId = event.target.value;
+        if (playerId) {
+            chart2 = await plotPlayerPerformance(playerId, 'playerChart2', chart2)
         }
         });
 

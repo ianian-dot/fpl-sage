@@ -14,6 +14,7 @@
 ## 2. Frontend
 * basic HTML and javascript for interactivity
 * features: top players by score, top players by value, top players by recent performances, using plots of recent points to compare two players
+* html and js interactivity: returns table/plot based on user inputs
   
 #### Screenshots:
 ![image](fplss1.png)

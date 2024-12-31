@@ -6,7 +6,7 @@
 
 ## 1. Backend/ data engineering
 * downloads season FPL data from the api
-* downloads old season data from (github repo)[https://github.com/vaastav/Fantasy-Premier-League]
+* downloads old season data from [github repo](https://github.com/vaastav/Fantasy-Premier-League)
 * creates a simple database to store the data, and to query relevant data for the backend flask APIs
 * also, a script that is meant to run weekly to get the updated gameweek data and update them into the db
 

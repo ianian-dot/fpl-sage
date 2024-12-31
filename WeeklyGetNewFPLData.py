@@ -47,6 +47,7 @@ def update_static_data(static_data):
         players = pd.DataFrame(static_data['elements'])
         positions = pd.DataFrame(static_data['element_types'])
         teams = pd.DataFrame(static_data['teams'])
+        fixtures = pd.DataFrame(static_data['events'])
 
         #1. teams
         str_cols = [col for col in teams.columns if 'strength' in col]
@@ -74,6 +75,16 @@ def update_static_data(static_data):
         players = players_with_teams_positions[players_cols]
         players.rename(columns={'id': 'player_id'}, inplace=True)
         players.to_sql('StaticPlayers', conn, if_exists='replace', index=False)
+
+
+        #3. fixtures 
+        fixtures['deadline_time'] = pd.to_datetime(fixtures['deadline_time'])
+        fixtures['deadline_date'] = fixtures['deadline_time'].dt.date
+        fixtures['deadline_time'] = fixtures['deadline_time'].dt.time
+        fixtures_col = ['id', 'name', 'average_entry_score','deadline_date','deadline_time', 'most_captained', 'most_vice_captained']
+        fixtures[fixtures_col].to_sql(name='Fixtures', con=conn, if_exists='replace', index=False)
+
+        
 
         ## done!
         conn.commit() ## make sure to run the code

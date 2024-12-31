@@ -5,6 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FPL Players</title> 
     <style>
+        h1 {
+            text-align: center;
+            line-height: 2.5;
+            margin-bottom:20px;
+            padding:0;
+            color:#333;
+            text-transform: uppercase;
+        }
+        h2 {
+            font-size:1.8em;
+            color:#222;
+            margin-bottom:30px;
+            padding-bottom:5px;
+            border-bottom: 3px solid #444;
+
+        }
+        section{
+            background: white;
+            margin: 20px auto;
+            padding: 20px;
+            box-shadow: 0 4px 6px rbga(0,0,0,0.1);
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -43,10 +66,10 @@
 
     <!--- add info for gameweek stuff here!  --> 
     <div id="gameweekInfo" style = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2> Current Gameweek: <span id = "gameweekGameweek"> Loading... </span> ------------- Deadline: <span id = "gameweekDeadlineDate"> Loading... </span> 
+        <h1> Current Gameweek: <span id = "gameweekGameweek"> Loading... </span> ------------- Deadline: <span id = "gameweekDeadlineDate"> Loading... </span> 
     
             <span id = "gameweekDeadlineTime">  </span>
-        </h2>
+        </h1>
     
     </div>
 
@@ -70,7 +93,36 @@
     </table>
     
     <!-- SECOND TABLE -->
+    <h2>Most valuable players below a price</h2>
+    <label for = 'priceInput'>Enter Max Price (Millions):</label>
+    <input type = 'number' id = 'priceInput' placeholder="Enter Price e.g. 8">
+    <button id = 'fetchValuePlayersButton'>Find Value Players</button>
+    <table id="topvalueTable">
+        <thead> 
+            <tr> 
+                <th>Name</th>
+                <th>Team</th>
+                <th>Value</th>
+                <th>Cost(million)</th>
+                <th>Total Points</th>
+                <th>Position</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Data will be inserted here, iteratively add one tr for each player later-->
+        </tbody>
+    </table>
+
+    
     <h2>Top players: Recent form (past 3 games) </h2>
+    <label for="playerLimit">Number of players per position:</label>
+    <select id = 'playerLimit'>
+        <option value = '3'>Top 3 </option>
+        <option value = '5'>Top 5 </option>
+        <option value = '7'>Top 7 </option>
+
+    </select>
+
     <table id = 'topPlayersRecentFormTable'>
         <thead>
             <tr>
@@ -92,6 +144,32 @@
 
     </table>
 
+    <!-- THRID TABLE -->
+    <h2>Most Popular Players by Net Transfers (Recent Gameweek)</h2>
+        <label for="netTransferLimit">Number of players to display:</label>
+        <select id="netTransferLimit">
+            <option value="3">Top 3</option>
+            <option value="5">Top 5</option>
+            <option value="7">Top 7</option>
+        </select>
+
+        <table id="topPlayersNetTransfersTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Position</th>
+                    <th>Team</th>
+                    <th>Net Transfers (100k)</th>
+                    <th>Selected (100k)</th>
+                    <th>Cost (M)</th>
+                    <th>Total Points</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be dynamically inserted here -->
+            </tbody>
+        </table>
 
     <h2>Player past performance</h2>
     <h3>Select a Player</h3>
@@ -115,7 +193,21 @@
             <canvas id="playerChart2" width = '1000' height = '1000'></canvas>                
         </div>
     </div>
-            
+
+    <h2>Correlation analysis per position (which factors matter?) </h2>
+        <select id = 'positionDropdown'>
+            <option value = '' > Select Position </option> 
+            <option value = 'FWD' > Forward/striker </option> 
+            <option value = 'MID' > Midfielder </option> 
+            <option value = 'DEF' > Defender </option> 
+            <option value = 'GK' > Goalkeeper </option> 
+        </select>
+
+    <div id = 'correlationPlot' style = 'margin-top: 20px'>
+        <!-- correlation plot will insert here-->
+        <img id = 'corrImage' src = '' alt = 'Correlation Plot' style = 'width: 100% ; max-width: 800px; display: none;'>
+        
+    </div>
 
     <script>
 
@@ -143,15 +235,18 @@
                 /////////////////////////////////////////////////////////////////////////////////// 
         async function get_players_recent_form() {
             console.log('begin function for players recent form')
-            const response = await fetch('http://127.0.0.1:5000/topplayers/position');
+            const nplayers = document.getElementById('playerLimit').value; // extract the value only
+            const response = await fetch(`http://127.0.0.1:5000/topplayers/position?limit=${nplayers}`);
             const players = await response.json();
-            
+            console.log('limit:' + nplayers)
             const tableBody = document.querySelector('#topPlayersRecentFormTable tbody');
+
+            // reset the table each time 
+            tableBody.innerHTML = '' //set to blank 
             
             players.forEach(player => {
                 const row = document.createElement('tr')
-                console.log('position '+player.position)
-                        // Add CSS class based on position
+                // Add CSS class based on position
                 let positionClass = '';
                 switch (player.position.trim()) {
                     case 'GKP':
@@ -184,8 +279,45 @@
                 `;
                 tableBody.appendChild(row);
             });}
-        ///////////////////////////////////////////////////////////////////////////////////
     
+        ///////////////////////////////////////////////////////////////////////////////////
+        async function get_popular_players() {
+            console.log('Getting popular players');
+            const nplayers2 = document.getElementById('netTransferLimit').value;
+            const response = await fetch(`http://127.0.0.1:5000/topplayers/popular?limit=${nplayers2}`);
+            console.log('player limit ' + nplayers2)
+            const players = await response.json();
+            
+            const tableBody = document.querySelector('#topPlayersNetTransfersTable tbody')
+
+            // clear table body 
+            tableBody.innerHTML = '';
+
+            //populate table body 
+            players.forEach(player => {
+                const row = document.createElement('tr');
+                let positionClass = '';
+                    switch (player.position.trim()) {
+                        case 'GKP': positionClass = 'goalkeeper'; break;
+                        case 'DEF': positionClass = 'defender'; break;
+                        case 'MID': positionClass = 'midfielder'; break;
+                        case 'FWD': positionClass = 'forward'; break;
+                    }
+                row.classList.add(positionClass);
+                row.innerHTML = `
+                    <td>${player.name}</td>
+                    <td>${player.position}</td>
+                    <td>${player.team}</td>
+                    <td>${player.net_transfers}</td>
+                    <td>${player.selected}</td>
+                    <td>${player.cost_mil}</td>
+                    <td>${player.total_points}</td>
+                    <td>${player.value}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        
+        }
         
         async function get_gameweek() {
             console.log('ian3');
@@ -314,17 +446,43 @@
                                 display: true,
                                 text: 'Points',
                             },
+                            min:0,
+                            max:22,
                         },
                     },
                 },
             });
-            chart.resize({
-            width: 400, // Target width
-            height: 200, // Target height
-            });
+            // chart.resize({
+            // width: 400, // Target width
+            // height: 200, // Target height
+            // });
         
         return newchart;
     }
+        async function populateValuePlayers(price) {
+            //get data from api
+            const response = await fetch(`http://127.0.0.1:5000/topplayersvalue?price=${price}`);
+            const players = await response.json();
+            
+            //get table body to populate 
+            const tablebody = document.getElementById('topvalueTable');
+
+            //populate 
+            players.forEach(player => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${player.name}</td>
+                    <td>${player.team}</td>
+                    <td>${player.value}</td>
+                    <td>${player.cost_mil}</td>
+                    <td>${player.total_points}</td>
+                    <td>${player.position}</td>
+                    `;
+                tablebody.appendChild(row);
+            })
+
+    }
+
               
         // ADD EVENT LISTENER -- FOR THE BACKEND TO KNOW WHICH PLAYER THE USER HAS CHOSEN FROM DROPDOWN
         document.getElementById('playerDropDown').addEventListener('change', async (event) => {
@@ -334,12 +492,28 @@
         }
         });
 
-        // Second event listener for plot
+        // Second event listener for PLOTS 
         document.getElementById('playerDropDown2').addEventListener('change', async (event) => {
         const playerId = event.target.value;
         if (playerId) {
             chart2 = await plotPlayerPerformance(playerId, 'playerChart2', chart2)
         }
+        });
+
+        // Add event listener for the nplayers limit for recent form 
+        document.getElementById('playerLimit').addEventListener('change', get_players_recent_form);
+
+        // Add event listener for the nplayers limit for popular 
+        document.getElementById('netTransferLimit').addEventListener('change', get_popular_players);
+
+        // Add event listener for VALUE PLAYERS 
+        document.getElementById('fetchValuePlayersButton').addEventListener('click', () => {
+            const maxPrice = parseFloat(document.getElementById('priceInput').value); //get inputted max price
+            const tablebody = document.getElementById('topvalueTable').querySelector('tbody');
+            tablebody.innerHTML = '' ;// clear
+            console.log('clearing tablebody innerhtml');
+            
+            populateValuePlayers(maxPrice);
         });
 
 

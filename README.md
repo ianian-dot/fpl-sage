@@ -19,6 +19,8 @@
 #### Screenshots:
 ![image](fplss1.png)
 ![image](fplss2.png)
+![image](Screenshot 2025-01-31 150340.png)
+
 
 ## 3. Data science
 * ipynb exploratory analysis under the Data Science folder, e.g. visualising players via PCA and t-SNE, correlation statistics with total points, basic zero inflated poisson model to predict points, clustering players via kMeans

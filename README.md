@@ -18,7 +18,7 @@
   
 #### Screenshots:
 ![image](fplss1.png)
-![image]('Screenshot 2025-01-31 150340.png')
+![image](fplss3.png)
 
 
 ## 3. Data science

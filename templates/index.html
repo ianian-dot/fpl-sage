@@ -380,10 +380,15 @@
         console.log('Chart.js loaded:', typeof Chart !== 'undefined');
         async function plotPlayerPerformance(playerId, chartid, chartvariable) {
             const response = await fetch(`http://127.0.0.1:5000/player/${playerId}/history`);
-            const playerHistory = await response.json();
-            
+            const playerData = await response.json();
 
-            // Save variables 
+            // Save the data objects from API
+            const playerHistory = playerData.history;
+            const past_3_avg = playerData.past_3_avg;
+            const past_5_avg = playerData.past_5_avg;
+            const season_avg = playerData.season_avg;
+
+            // Extract data via for loops 
             const rounds = playerHistory.map(game => `GW${game.round}`);
             const actualPoints = playerHistory.map(game => game.total_points);
             const bonus = playerHistory.map(game => game.bonus);
@@ -414,8 +419,29 @@
                             backgroundColor: 'rgba(0,255,0,0.1)',
                             fill: true,
                             tension: 0.3,
+                        },
+                        {
+                            label: 'Past 3-game Avg',
+                            data: Array(rounds.length).fill(past_3_avg),
+                            borderColor: 'green',
+                            borderDash: [5, 5],
+                            pointStyle: false
+                        },
+                        {
+                            label: 'Past 5-game Avg',
+                            data: Array(rounds.length).fill(past_5_avg),
+                            borderColor: 'orange',
+                            borderDash: [5, 5],
+                            pointStyle: false
+                        },
+                        {
+                            label: 'Season Avg',
+                            data: Array(rounds.length).fill(season_avg),
+                            borderColor: 'red',
+                            borderDash: [5, 5],
+                            pointStyle: false
                         }
-                    ]
+                            ]
                 },
                 options: {
                     responsive: true,
@@ -447,7 +473,7 @@
                                 text: 'Points',
                             },
                             min:0,
-                            max:22,
+                            max:25,
                         },
                     },
                 },

@@ -163,12 +163,26 @@ def get_player_hist(player_id):
     FROM PlayerHistories 
     WHERE element = ? 
     ORDER BY round DESC
-    LIMIT 5
+    -- LIMIT 5 -- want to get more history
     '''
     df = pd.read_sql(query, conn, params=(player_id,))
-    df = df.sort_values('round', ascending= True)
     conn.close()
-    return df.to_json(orient='records')
+    df = df.sort_values('round', ascending= True)
+
+    ## Get averages 
+    past_3_avg = df['total_points'].tail(3).mean() if len(df) >= 3 else None
+    past_5_avg = df['total_points'].tail(5).mean() if len(df) >= 5 else past_3_avg
+    season_avg = df['total_points'].mean() 
+
+    ## Return both the whole history, as well as these new averages
+    response = {
+        'history': df.to_dict(orient = 'records'),
+        'past_3_avg': past_3_avg,
+        'past_5_avg': past_5_avg,
+        'season_avg': season_avg
+    }
+
+    return jsonify(response)
     
 
 ## Endpoint3: Plot player history 

@@ -129,6 +129,10 @@ def update_player_histories():
         new_histories_df['kickoff_date'] = new_histories_df.kickoff_time.dt.date
         new_histories_df['kickoff_time'] = new_histories_df.kickoff_time.dt.time
         new_histories_df = new_histories_df.drop(columns=['kickoff_time'])
+        existing_cols_query = "PRAGMA table_info(PlayerHistories)"
+        existing_cols = [row['name'] for row in conn.execute(existing_cols_query).fetchall()]
+        new_histories_df = new_histories_df[[col for col in new_histories_df.columns if col in existing_cols]]
+
 
         new_histories_df.to_sql('PlayerHistories', conn, 
                                 if_exists='append', index=False)
